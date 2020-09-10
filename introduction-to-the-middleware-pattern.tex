@@ -1,0 +1,453 @@
+% XeLaTeX can use any Mac OS X font. See the setromanfont command below.
+% Input to XeLaTeX is full Unicode, so Unicode characters can be typed directly into the source.
+
+% The next lines tell TeXShop to typeset with xelatex, and to open and save the source with Unicode encoding.
+
+%!TEX TS-program = xelatex
+%!TEX encoding = UTF-8 Unicode
+
+\documentclass[12pt]{article}
+% A4 Dimensions 595 × 842 points
+\usepackage[
+	headheight=16pt,
+	top=82.24pt,
+	bottom=133.07pt,
+	left=50.83pt,
+	right=50.83pt,
+	includeheadfoot,
+	includemp,
+	marginparsep=18pt,
+	marginparwidth=109.66pt
+]{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+% https://anorien.csc.warwick.ac.uk/mirrors/CTAN/macros/latex/contrib/geometry/geometry.pdf
+\geometry{a4paper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{titling}
+\usepackage{marginnote}
+\usepackage{graphicx}
+\usepackage{amssymb}
+
+\usepackage{listings}
+\usepackage{pgf-umlsd}
+% https://anorien.csc.warwick.ac.uk/mirrors/CTAN/graphics/pgf/contrib/pgf-umlcd/pgf-umlcd-manual.pdf
+\usepackage{pgf-umlcd}
+
+% Will Robertson's fontspec.sty can be used to simplify font choices.
+% To experiment, open /Applications/Font Book to examine the fonts provided on Mac OS X,
+% and change "Hoefler Text" to any of these choices.
+
+\usepackage{fontspec,xltxtra,xunicode}
+\usepackage{fancyhdr}
+\usepackage{eso-pic}
+\usepackage{titling}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{lastpage}
+
+\newcommand{\subtitle}[1]{%
+  \posttitle{%
+    \end{flushright}
+    \begin{flushright}\LARGE\it#1\end{flushright}
+    \vskip 26em}%
+}
+
+\title{Introduction to the \\ Middleware Pattern}
+\subtitle{In Typescript}
+\author{Sean Cooper}
+
+\defaultfontfeatures{Mapping=tex-text}
+\setromanfont[Mapping=tex-text]{Agmena Pro}
+\setsansfont[Scale=MatchLowercase,Mapping=tex-text]{Aptifer Sans LT Pro}
+\setmonofont[Scale=MatchLowercase]{Ballinger Mono}
+
+\pretitle{\begin{flushright}\huge}
+\preauthor{\begin{flushright}\large \lineskip 0.5em}
+\postauthor{\par\end{flushright}}
+\predate{\begin{flushright}\normalsize\it}
+\postdate{\par\end{flushright}}
+
+\fancypagestyle{withnotes}{
+    \fancyhf{} % clear all header and footers
+    \fancyfoot[R]{\footnotesize{Page \thepage~of~\pageref{LastPage}}}
+    \renewcommand{\headrulewidth}{1pt}
+    \renewcommand{\footrulewidth}{1pt}
+ }
+ 
+ \renewcommand{\umltextcolor}{black}
+ \renewcommand{\umldrawcolor}{black}
+ \renewcommand{\umlfillcolor}{white}
+ 
+\lstset{basicstyle=\ttfamily\small,breaklines=true}
+\DeclareCaptionFormat{codecaptionformat}{#1#2#3\hrulefill}
+\captionsetup[lstlisting]{
+	font={it,small},
+	format=codecaptionformat,
+	justification=raggedright,
+	singlelinecheck=false
+}
+\captionsetup{
+   font={it,small},
+   format=codecaptionformat,
+   justification=raggedright,
+   singlelinecheck=false
+}
+
+\newcommand{\coderef}[1]{\textit{Code Ref. \ref{#1}}}
+\newcommand{\umlref}[1]{\textit{Fig. \ref{#1}}}
+
+\def\lstlistingname{Code Ref.}
+ 
+\pagestyle{withnotes}
+%\date{}                                           % Activate to display a given date or no date
+
+\begin{document}
+\pagenumbering{gobble}
+ \AddToShipoutPicture*{
+  \AtTextLowerLeft{
+    \put(\LenToUnit{\textwidth + \marginparsep},0){
+      \rule{1pt}{\textheight}
+    }
+  }
+}
+
+\maketitle
+\pagebreak
+\pagenumbering{arabic}
+% \marginnote{This is a margin note using the geometry package, set at 3cm vertical offset to the line it is typeset.}
+\section{Introduction}
+When starting out with any new pattern the first thing you ought to try and do is to design the interfaces, all this really means is defining what's responsible for storing and manipulating each bit of data and the way in which parts of the system can communicate with one another. 
+\par An interface is a statement of the contract that a thing that implements it will adhere too. Meaning, if anything instance is known to be of any given type you can be sure it will contain the data defined in the interface and it will have methods for accessing and updating that data. 
+\par To give you an idea about how a pattern works you'll often be provided with a short synopsis along with some \textsc{uml} diagrams, before we get started writing a middleware let's briefly have a look over a couple of different types of these diagrams.
+\section{Diagrams}
+\subsection{UML}
+You'll often see design patterns described with \textsc{uml} diagrams like the one in \umlref{fig:middleware}. There are conventions and meanings to the structure and symbols, it's worth checking some guides to get a little more familiar with them. If you ever try to make any don't get too hung up on whether or not you're doing it right, they're meant to help you describe systems, not get in the way. As long you understand what you've created and can use it to explain it to someone else, it's served its purpose.
+\par In the \umlref{fig:middleware} diagram you'll see there are two interfaces defined and four classes. The interfaces describe the make up of the classes that implement them. You can see \textit{IMiddleware} interface will have a single method called \textit{run} which has two parameters. It's prefixed with a ``+", this means the method is publicly accessible. In the \textit{IMiddlewareChain} there are a mixture of attributes and methods. The two attributes are both prefixed with ``-", as you may have guessed, this means they're private, so they won't be accessible outside of the class. The \textit{invokeMiddleware} method is also private, so can't be called outside of the class.
+\par To show how each of the entities relate to one another there are a whole host of different line, symbol and arrow combinations in \textsc{uml} diagrams. In this diagram the dashed arrows point to the interface each class implements. While the solid lines show that \textit{MiddlewareChain} will receive the three instances of the \textit{IMiddleware} via the add method. 
+\par This is by no means a conventional \textsc{uml} diagram, it's my interpretation of the rules and standards, but it's good enough to demonstrate the system, which is all that really matters when it comes down to it. 
+\begin{figure}
+\caption{Middleware UML} \label{fig:middleware}
+\centering
+\begin{tikzpicture}
+    \tikzstyle{every node}=[font=\scriptsize\sf]
+    \begin{interface}[text width=5cm]{IMiddlewareChain}{-3.5, 0}
+    	\attribute{- middlewares: IMiddlewares[]}
+	\attribute{- context: any}
+	\operation{+ add(middleware: IMiddleware)}
+        \operation{+ runChain(context: any)}
+        \operation{- invokeMiddleware(middlewares: IMiddleware[])}
+    \end{interface}
+     \begin{class}[text width=4cm]{MiddlewareChain}{-3.5, -3.5}
+    	\implement{IMiddlewareChain}
+    \end{class}
+
+    \begin{interface}[text width=4cm]{IMiddleware}{3.5, 0}
+        \operation{+ run(context: any, next: () => void)}
+    \end{interface}
+    \begin{class}[text width=4cm]{MiddlewareOne}{3.5, -2}
+    	\implement{IMiddleware}
+    \end{class}
+    \begin{class}[text width=4cm]{MiddlewareTwo}{3.5, -3.5}
+    	\implement{IMiddleware}
+    \end{class}
+    \begin{class}[text width=4cm]{MiddlewareThree}{3.5, -5}
+    	\implement{IMiddleware}
+    \end{class}
+    
+    \unidirectionalAssociation{MiddlewareOne}{add}{1}{MiddlewareChain}
+    \unidirectionalAssociation{MiddlewareTwo}{add}{1}{MiddlewareChain}
+    \unidirectionalAssociation{MiddlewareThree}{add}{1}{MiddlewareChain}
+
+\end{tikzpicture}
+\end{figure}
+\subsection{Sequence Diagram}
+
+A sequence diagram \umlref{fig:sequence} can be used to show the flow of an applications threads or the communication between clients and servers. It's useful for describing both synchronous and asynchronous event streams.
+\par To begin, you'll call the \textit{runChain} method of an instance of the \textit{MiddlewareChain}. \textit{runChain} then calls the private method ``invokeMiddleware", this is passed an array of ``Middleware" instances and will be responsible for calling the middleware's ``run" methods. ``invokeMiddleware" also creates a function that will call another ``invokeMiddleware" function which is passed to the middleware ``run" method as the ``next" parameter. The ``run" method can then call ``next()" to create a recursive chain of method invocations.
+
+\begin{figure}[H]
+\caption{Middleware Sequence Diagram} \label{fig:sequence}
+\centering
+\begin{sequencediagram}
+    \tikzstyle{every node}=[font=\scriptsize\sf]
+        \newthread{t}{:MiddlewareChain}
+        \begin{sdblock}{Run Middleware}{\sf Calling ``next()" performs``invokeMiddleware()"}
+        \newinst[2]{a}{:MiddlewareOne}
+        \newinst{b}{:MiddlewareTwo}
+        \newinst{c}{:MiddlewareThree}
+        \begin{call}{t}{invokeMiddleware()}{a}{}
+        \begin{call}{a}{next()}{b}{}
+        \begin{call}{b}{next()}{c}{}
+        \begin{call}{c}{next()}{c}{}
+        \end{call}
+        \end{call}
+        \end{call}
+        \end{call}
+    \end{sdblock}
+\end{sequencediagram}
+\end{figure}
+
+\section{Implementation}
+
+Now we can take the information from the diagrams to define the system's interfaces. Once the interfaces have been defined we'll walk through each of the methods before finally writing a simple demo. Though if you'd rather see the full implementation feel free to skip ahead to the final script \coderef{code:fullscript}. 
+
+\subsection{Interfaces}
+
+First we'll define the ``IMiddlewareChain" interface \coderef{code:imiddlewarechain}. When defining an interface in code you can omit the private methods and attributes, only the public facing api is of concern. It's a merely a contract telling other parts of the system what they can interact with on this class type, nothing else needs to know what's going on internally. 
+\par The only public methods are ``add" and ``runChain" so they are defined below. ``add" will accept an instance of ``IMiddleware" as an argument. ``runChain" accepts anything as the ``context", this will be the data that you want to be manipulated throughout the middleware chain. 
+
+\begin{lstlisting}[caption=IMiddlewareChain,label=code:imiddlewarechain]
+interface IMiddlewareChain {
+    add(middleware: IMiddleware): void
+    runChain(context: any): any
+}
+\end{lstlisting}
+
+Secondly lets define the ``IMiddleware" interface. This only has one public method ``run"  which accepts the current context data and a ``next" callback function. 
+
+\begin{lstlisting}[caption=IMiddleware,label=code:imiddleware]
+interface IMiddleware {
+    run(context: any, next: () => void): void
+}
+\end{lstlisting}
+
+\subsection{Classes}
+
+Next up we need to create classes that implement the interfaces. The ``MiddlewareChain" class implements \coderef{code:middlewarechain} by providing the two public methods, ``add" and ``runChain" defined in the interface. The functionality for this method stubs will be added in the next section.
+
+\begin{lstlisting}[caption=MiddlewareChain Class,label=code:middlewarechain]
+class MiddlewareChain implements IMiddlewareChain {
+    private middlewares: IMiddleware[] = [];
+    private context: any = {};
+   
+    add(middleware: IMiddleware) {
+       // Todo: implement method
+    }
+
+    runChain(context?: any) {
+       // Todo: implement method
+    }
+
+    private invokeMiddleware(middlewares: IMiddleware[]) {
+        // Todo: implement method
+    }
+ }
+\end{lstlisting}
+
+Any number of ``IMiddleware" classes \coderef{code:middlewareclasses} can be created to perform any task you can dream up. We'll declare two for now, with the imaginative names of ``MiddlewareOne" and ``MiddlewareTwo". Again the method stubs are currently empty ready to be filled in later on.
+
+\begin{lstlisting}[caption=Middleware Classes,label=code:middlewareclasses]
+class MiddlewareOne implements IMiddleware {
+    run(context: any, next: () => void) {
+          // ... Todo: Implement method
+    }
+}
+
+class MiddlewareTwo implements IMiddleware {
+    run(context: any, next: () => void) {
+          // ... Todo: Implement method
+    }
+}
+\end{lstlisting}
+
+\subsection{Methods}
+
+Now comes the crucial part, writing the actual functionality, first the ``MiddlewareChain" methods that are responsible for handling the middleware system, then we'll write some ``run`` middleware methods that will demonstrate the principles.
+
+\subsubsection{Add Method}
+
+This method is responsible for adding ``Middleware" instances to the private ``middlewares" array attribute.
+
+\begin{lstlisting}[caption=add Method,label=code:add]
+class MiddlewareChain implements IMiddlewareChain {
+    private middlewares: IMiddleware[] = [];
+    
+    // ...
+   
+    add(middleware: IMiddleware) {
+        this.middlewares.push(middleware);
+    }
+
+     // ...
+ }
+\end{lstlisting}
+
+\subsubsection{Run Chain Method}
+
+This method is responsible for initialising the ``context" data attribute, invoking the middleware chain and returning the resulting ``context"
+
+\begin{lstlisting}[caption=runChain Method,label=code:runchain]
+class MiddlewareChain implements IMiddlewareChain {
+    private middlewares: IMiddleware[] = [];
+    private context: any = {};
+
+    // ...
+
+    runChain(context?: any) {
+        if (context) this.context = context;
+        this.invokeMiddleware([...this.middlewares])
+        return this.context;
+    }
+
+    private invokeMiddleware(middlewares: IMiddleware[]) {
+        // Todo: implement method
+    }
+ }
+\end{lstlisting}
+
+\subsubsection{Invoke Middleware Method}
+
+The ``invokeMiddleware" method is responsible for calling the ``run" method of each ``Middleware" instance. The ``invokeMiddleware" method is passed an array of the ``Middleware" instances which have been added to the ``MiddlewareChain". 
+\par When it is invoked it takes the first middleware off of the array and calls it, passing in the ``context" parameter which is a store for data and the ``next" parameter which is an anonymous function that will call another ``invokeMiddleware" which is passed the array of remaining ``middlewares" array as an argument. 
+\par Each middleware will need to make call the ``next()" function that it is passed in order to continue the chain.  A middleware can perform actions before and after that function call, this is the crux of the pattern. Once all of the middlewares have been called ``runChain" returns the updated context.
+
+\begin{lstlisting}[caption=invokeMiddleware Method,label=code:invoke]
+class MiddlewareChain implements IMiddlewareChain {
+    private middlewares: IMiddleware[] = [];
+    private context: any = {};
+    
+    runChain(context?: any) {
+        if (context) this.context = context;
+        this.invokeMiddleware([...this.middlewares])
+        return this.context;
+    }
+    
+    private invokeMiddleware(middlewares: IMiddleware[]) {
+        if(!middlewares.length) return;
+        const middleware = middlewares.shift();
+        if(middleware){
+            middleware.run(
+                this.context, 
+                () => this.invokeMiddleware(middlewares)
+            )
+        }
+
+    }
+ }
+\end{lstlisting}
+
+\subsubsection{Run Method}
+
+Just to prove that the middleware is working as intended, all these middlewares will do is ``console.log" data and make minor changes to a ``context" object.
+
+\begin{lstlisting}[caption=Full Script,label=code:mwone]
+class MiddlewareOne implements IMiddleware {
+    run(context: any, next: () => void) {
+        console.log('I Ran');
+        context.paramOne = "one";
+        console.log(1);
+        next();
+        console.log(4);
+        console.log(context.paramTwo);
+        context.end = 'here';
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption=Full Script,label=code:mwtwo]
+class MiddlewareTwo implements IMiddleware {
+    run(context: any, next: () => void) {
+        console.log('I Ran Too');
+        context.paramTwo = "two";
+        console.log(2);
+        next();
+        console.log(3);
+        console.log(context.paramOne);
+    }
+}
+\end{lstlisting}
+
+\section{Testing it Out}
+
+First instantiate the ``MiddlewareChain" class, then instantiate the two ``IMiddleware" implemations. Next ``add" the two middlewares to the ``MiddlewareChain". Lastly set up some dummy ``input" data. Now the system is all set up and ready to run. Calling ``runChain" will execute the middleware system. You should see the logs count in order 1, 2, 3, 4 and that some data has been added to the context in the process.
+
+\begin{lstlisting}[caption=Full Script,label=code:demo]
+
+const middlewareChain = new MiddlewareChain();
+
+const mwOne = new MiddlewareOne();
+const mwTwo = new MiddlewareTwo();
+
+middlewareChain.add(mwOne);
+middlewareChain.add(mwTwo);
+
+const input = {start: 'here'};
+const result = middlewareChain.runChain(input);
+console.log(result);
+\end{lstlisting}
+
+\section{Middleware Full Example}
+
+\begin{lstlisting}[caption=Full Script,label=code:fullscript]
+interface IMiddlewareChain {
+    add(middleware: IMiddleware): void
+    runChain(context: any): any
+}
+
+interface IMiddleware {
+    run(context: any, next: () => void): void
+}
+
+class MiddlewareChain implements IMiddlewareChain {
+    private middlewares: IMiddleware[] = [];
+    private context: any = {};
+
+    add(middleware: IMiddleware) {
+       this.middlewares.push(middleware);
+    }
+
+    runChain(context?: any) {
+        if (context) this.context = context;
+        this.invokeMiddleware([...this.middlewares])
+        return this.context;
+    }
+
+    private invokeMiddleware(middlewares: IMiddleware[]) {
+        if(!middlewares.length) return;
+        const middleware = middlewares.shift();
+        if(middleware){
+            middleware.run(
+                this.context, 
+                () => this.invokeMiddleware(middlewares)
+            )
+        }
+    }
+}
+
+class MiddlewareOne implements IMiddleware {
+    run(context: any, next: () => void) {
+        console.log('I Ran');
+        context.paramOne = "one";
+        console.log(1);
+        next();
+        console.log(4);
+        console.log(context.paramTwo);
+        context.end = 'here';
+    }
+}
+
+class MiddlewareTwo implements IMiddleware {
+    run(context: any, next: () => void) {
+        console.log('I Ran Too');
+        context.paramTwo = "two";
+        console.log(2);
+        next();
+        console.log(3);
+        console.log(context.paramOne);
+    }
+}
+
+const middlewareChain = new MiddlewareChain();
+
+const mwOne = new MiddlewareOne();
+const mwTwo = new MiddlewareTwo();
+
+middlewareChain.add(mwOne);
+middlewareChain.add(mwTwo);
+
+const input = {start: 'here'};
+const result = middlewareChain.runChain(input);
+console.log(result);
+\end{lstlisting}
+
+\end{document}  
